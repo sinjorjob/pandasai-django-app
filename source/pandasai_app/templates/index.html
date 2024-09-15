@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PandasAI Query App</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #A100FF;
+            --secondary-color: #00FFFF;
+            --accent-color: #FF00B4;
+            --background-color: #F0F4F8;
+            --surface-color: #FFFFFF;
+            --on-surface-color: #333333;
+            --code-background: #2D3748;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background-color);
+            color: var(--on-surface-color);
+        }
+
+        .custom-gradient {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        }
+
+        .custom-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .result-text {
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: 'Poppins', sans-serif;
+            line-height: 1.6;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(240, 244, 248, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--secondary-color);
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .card {
+            background-color: var(--surface-color);
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            background: linear-gradient(145deg, #cc99ff, #9900ff);
+        }
+
+        .card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(161, 0, 255, 0.3);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -100%;
+            left: -100%;
+            width: 300%;
+            height: 300%;
+            background: linear-gradient(to right,
+                    rgba(255, 255, 255, 0) 0%,
+                    rgba(255, 255, 255, 0.3) 50%,
+                    rgba(255, 255, 255, 0) 100%);
+            transform: rotate(30deg);
+            animation: shineEffect 6s infinite;
+        }
+
+        @keyframes shineEffect {
+            0% {
+                left: -150%;
+                top: -150%;
+            }
+
+            100% {
+                left: 150%;
+                top: 150%;
+            }
+        }
+
+        .card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.15) 0%, rgba(0, 0, 0, 0.15) 100%);
+            pointer-events: none;
+        }
+
+        .card-header {
+            background-color: rgba(161, 0, 255, 0.8);
+            color: var(--surface-color);
+            padding: 16px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+        }
+
+        .card-content.show {
+            max-height: 1000px;
+        }
+
+        .card-inner {
+            padding: 16px;
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+
+        .icon {
+            transition: transform 0.3s ease;
+        }
+
+        .card.active .icon {
+            transform: rotate(180deg);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card-content.show .card-inner {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: var(--surface-color);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary:hover {
+            background-color: #8400CC;
+            transform: translateY(-2px);
+        }
+
+        .input-field {
+            border: 2px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background-color: var(--surface-color);
+            color: var(--on-surface-color);
+        }
+
+        .input-field:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(0, 255, 255, 0.2);
+            outline: none;
+        }
+
+        @keyframes gradientBG {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .animated-title {
+            background: linear-gradient(-45deg, #A100FF, #00FFFF, #FF00B4, #A100FF);
+            background-size: 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientBG 10s ease infinite;
+        }
+
+        .dropzone {
+            border: 2px dashed #ccc;
+            border-radius: 20px;
+            width: 100%;
+            margin: 20px auto;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .dropzone.dragover {
+            border-color: var(--primary-color);
+            background-color: rgba(161, 0, 255, 0.1);
+        }
+
+        #csv-display {
+            margin-top: 20px;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        #csv-display table {
+            width: 100%;
+            table-layout: auto;
+            border-collapse: collapse;
+            /* テーブルの境界線を結合 */
+        }
+
+        #csv-display th,
+        #csv-display td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px;
+            /* 最大幅を設定 */
+            min-width: 100px;
+            /* 最小幅を設定 */
+            border: 1px solid #ddd;
+            /* セルの境界線を追加 */
+            padding: 8px;
+            /* セル内のパディングを追加 */
+        }
+
+        #csv-display th:hover,
+        #csv-display td:hover {
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        #csv-display th {
+            background-color: var(--primary-color);
+            color: var(--surface-color);
+            font-size: 14px;
+        }
+
+        #csv-display th:hover {
+            overflow: visible;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        #csv-display td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #csv-display tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        #csv-display tr:hover {
+            background-color: #ddd;
+        }
+
+        .sortable {
+            cursor: pointer;
+        }
+
+        .sortable:hover {
+            background-color: #8400CC;
+            /* ホバー時の背景色を濃い紫に */
+        }
+
+        .sort-icon::after {
+            content: '\25B2';
+            margin-left: 5px;
+        }
+
+        .sort-icon.desc::after {
+            content: '\25BC';
+        }
+
+        #search-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .preserve-whitespace p {
+            white-space: pre-wrap;
+        }
+
+        .preserve-whitespace br {
+            display: block;
+            margin-bottom: 1em;
+            content: "";
+        }
+
+        /* モデル設定モーダルのスタイル */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .provider-cards {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: nowrap;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .provider-card {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 200px;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .provider-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .provider-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+        }
+
+        .setup-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 15px;
+            transition: background-color 0.3s ease;
+            font-size: 14px;
+        }
+
+        .setup-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .setup-btn svg {
+            margin-right: 8px;
+            width: 16px;
+            height: 16px;
+        }
+
+        .openai-card {
+            background-color: #f0fff0;
+        }
+
+        .azure-card {
+            background-color: #f0f8ff;
+        }
+
+        #modelSettingsForm {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        .input-with-icon {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-with-icon input {
+            padding-right: 40px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .eye-icon {
+            width: 20px;
+            height: 20px;
+            color: #666;
+        }
+
+        .azure-field {
+            display: none;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        #modelSettingsForm button[type="submit"] {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 16px;
+        }
+
+        #modelSettingsForm button[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+
+        /* トグルスイッチのスタイル */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #2196F3;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(26px);
+        }
+
+        .toggle-label {
+            margin-left: 10px;
+            vertical-align: super;
+        }
+
+        .model-settings-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background-color: #68707c;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+        }
+
+        .model-settings-button:hover {
+            background-color: #2D3748;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .model-settings-button svg {
+            margin-right: 8px;
+        }
+        #result-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1em;
+            font-size: 0.9em;
+        }
+        
+        #result-content th {
+            background-color: #4a5568;
+            color: white;
+            font-weight: bold;
+            text-align: left;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        #result-content td {
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        #result-content tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        
+        #result-content tr:hover {
+            background-color: #edf2f7;
+        }
+        .output-type-container {
+            width: auto;
+            max-width: 200px;
+            display: inline-block;
+        }
+        #output_type {
+            width: 100%;
+            text-align-last: left;
+            padding-right: 20px;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- モデル設定メニューを追加 -->
+    <button onclick="openModelSettings()" class="model-settings-button">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+                d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            <path
+                d="M19.4 15C19.2669 15.3016 19.2272 15.6362 19.286 15.9606C19.3448 16.285 19.4995 16.5843 19.73 16.82L19.79 16.88C19.976 17.0657 20.1235 17.2863 20.2241 17.5291C20.3248 17.7719 20.3766 18.0322 20.3766 18.295C20.3766 18.5578 20.3248 18.8181 20.2241 19.0609C20.1235 19.3037 19.976 19.5243 19.79 19.71C19.6043 19.896 19.3837 20.0435 19.1409 20.1441C18.8981 20.2448 18.6378 20.2966 18.375 20.2966C18.1122 20.2966 17.8519 20.2448 17.6091 20.1441C17.3663 20.0435 17.1457 19.896 16.96 19.71L16.9 19.65C16.6643 19.4195 16.365 19.2648 16.0406 19.206C15.7162 19.1472 15.3816 19.1869 15.08 19.32C14.7842 19.4468 14.532 19.6572 14.3543 19.9255C14.1766 20.1938 14.0813 20.5082 14.08 20.83V21C14.08 21.5304 13.8693 22.0391 13.4942 22.4142C13.1191 22.7893 12.6104 23 12.08 23C11.5496 23 11.0409 22.7893 10.6658 22.4142C10.2907 22.0391 10.08 21.5304 10.08 21V20.91C10.0723 20.579 9.96512 20.258 9.77251 19.9887C9.5799 19.7194 9.31074 19.5143 9 19.4C8.69838 19.2669 8.36381 19.2272 8.03941 19.286C7.71502 19.3448 7.41568 19.4995 7.18 19.73L7.12 19.79C6.93425 19.976 6.71368 20.1235 6.47088 20.2241C6.22808 20.3248 5.96783 20.3766 5.705 20.3766C5.44217 20.3766 5.18192 20.3248 4.93912 20.2241C4.69632 20.1235 4.47575 19.976 4.29 19.79C4.10405 19.6043 3.95653 19.3837 3.85588 19.1409C3.75523 18.8981 3.70343 18.6378 3.70343 18.375C3.70343 18.1122 3.75523 17.8519 3.85588 17.6091C3.95653 17.3663 4.10405 17.1457 4.29 16.96L4.35 16.9C4.58054 16.6643 4.73519 16.365 4.794 16.0406C4.85282 15.7162 4.81312 15.3816 4.68 15.08C4.55324 14.7842 4.34276 14.532 4.07447 14.3543C3.80618 14.1766 3.49179 14.0813 3.17 14.08H3C2.46957 14.08 1.96086 13.8693 1.58579 13.4942C1.21071 13.1191 1 12.6104 1 12.08C1 11.5496 1.21071 11.0409 1.58579 10.6658C1.96086 10.2907 2.46957 10.08 3 10.08H3.09C3.42099 10.0723 3.742 9.96512 4.0113 9.77251C4.28059 9.5799 4.48572 9.31074 4.6 9C4.73312 8.69838 4.77282 8.36381 4.714 8.03941C4.65519 7.71502 4.50054 7.41568 4.27 7.18L4.21 7.12C4.02405 6.93425 3.87653 6.71368 3.77588 6.47088C3.67523 6.22808 3.62343 5.96783 3.62343 5.705C3.62343 5.44217 3.67523 5.18192 3.77588 4.93912C3.87653 4.69632 4.02405 4.47575 4.21 4.29C4.39575 4.10405 4.61632 3.95653 4.85912 3.85588C5.10192 3.75523 5.36217 3.70343 5.625 3.70343C5.88783 3.70343 6.14808 3.75523 6.39088 3.85588C6.63368 3.95653 6.85425 4.10405 7.04 4.29L7.1 4.35C7.33568 4.58054 7.63502 4.73519 7.95941 4.794C8.28381 4.85282 8.61838 4.81312 8.92 4.68H9C9.29577 4.55324 9.54802 4.34276 9.72569 4.07447C9.90337 3.80618 9.99872 3.49179 10 3.17V3C10 2.46957 10.2107 1.96086 10.5858 1.58579C10.9609 1.21071 11.4696 1 12 1C12.5304 1 13.0391 1.21071 13.4142 1.58579C13.7893 1.96086 14 2.46957 14 3V3.09C14.0013 3.41179 14.0966 3.72618 14.2743 3.99447C14.452 4.26276 14.7042 4.47324 15 4.6C15.3016 4.73312 15.6362 4.77282 15.9606 4.714C16.285 4.65519 16.5843 4.50054 16.82 4.27L16.88 4.21C17.0657 4.02405 17.2863 3.87653 17.5291 3.77588C17.7719 3.67523 18.0322 3.62343 18.295 3.62343C18.5578 3.62343 18.8181 3.67523 19.0609 3.77588C19.3037 3.87653 19.5243 4.02405 19.71 4.21C19.896 4.39575 20.0435 4.61632 20.1441 4.85912C20.2448 5.10192 20.2966 5.36217 20.2966 5.625C20.2966 5.88783 20.2448 6.14808 20.1441 6.39088C20.0435 6.63368 19.896 6.85425 19.71 7.04L19.65 7.1C19.4195 7.33568 19.2648 7.63502 19.206 7.95941C19.1472 8.28381 19.1869 8.61838 19.32 8.92V9C19.4468 9.29577 19.6572 9.54802 19.9255 9.72569C20.1938 9.90337 20.5082 9.99872 20.83 10H21C21.5304 10 22.0391 10.2107 22.4142 10.5858C22.7893 10.9609 23 11.4696 23 12C23 12.5304 22.7893 13.0391 22.4142 13.4142C22.0391 13.7893 21.5304 14 21 14H20.91C20.5882 14.0013 20.2738 14.0966 20.0055 14.2743C19.7372 14.452 19.5268 14.7042 19.4 15Z"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        モデル設定
+    </button>
+
+    <!-- モデル選択モーダル -->
+    <div id="modelListModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 class="text-2xl font-bold mb-4">モデル設定</h2>
+            <div class="provider-cards">
+                <!-- OpenAI Card -->
+                <div class="provider-card openai-card">
+                    <svg class="provider-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" fill="#10a37f" />
+                        <path
+                            d="M14.31 8l5.74 9.94M9.69 8h11.48M7.38 12l5.74-9.94M9.69 16L3.95 6.06M14.31 16H2.83M16.62 12l-5.74 9.94"
+                            stroke="#ffffff" stroke-width="2" fill="none" />
+                    </svg>
+                    <h3 class="text-lg font-semibold">OpenAI</h3>
+                    <button onclick="openProviderSetup('OpenAI')" class="setup-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16"
+                            fill="currentColor">
+                            <path
+                                d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
+                        </svg>
+                        セットアップ
+                    </button>
+                </div>
+
+                <!-- Azure OpenAI Card -->
+                <div class="provider-card azure-card">
+                    <svg class="provider-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="5" y="5" width="43" height="43" fill="#f25022" />
+                        <rect x="52" y="5" width="43" height="43" fill="#7fba00" />
+                        <rect x="5" y="52" width="43" height="43" fill="#00a4ef" />
+                        <rect x="52" y="52" width="43" height="43" fill="#ffb900" />
+                    </svg>
+                    <h3 class="text-lg font-semibold">Azure OpenAI</h3>
+                    <button onclick="openProviderSetup('AzureOpenAI')" class="setup-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16"
+                            fill="currentColor">
+                            <path
+                                d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
+                        </svg>
+                        セットアップ
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- モデル設定モーダル -->
+    <div id="modelSettingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 class="text-2xl font-bold mb-4">モデル設定</h2>
+            <form id="modelSettingsForm">
+                {% csrf_token %}
+                <input type="hidden" id="modelType" name="model_type">
+                <div class="form-group">
+                    <label for="modelName">モデル名</label>
+                    <select id="modelName" name="name" class="input-field">
+                        <!-- モデル名のオプションがここに動的に追加されます -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="apiKey">API Key</label>
+                    <div class="input-with-icon">
+                        <input type="password" id="apiKey" name="api_key" placeholder="API Key">
+                        <button type="button" class="toggle-password" onclick="togglePasswordVisibility('apiKey')">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                class="eye-icon">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group azure-field">
+                    <label for="apiVersion">API Version</label>
+                    <input type="text" id="apiVersion" name="api_version" placeholder="API Version">
+                </div>
+                <div class="form-group azure-field">
+                    <label for="endpoint">Endpoint</label>
+                    <input type="text" id="endpoint" name="endpoint" placeholder="Endpoint">
+                </div>
+                <div class="form-group">
+                    <label for="isActive" class="toggle-switch">
+                        <input type="checkbox" id="isActive" name="is_active">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="toggle-label">アクティブ</span>
+                </div>
+                <div class="button-container">
+                    <button type="submit">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto">
+        <div class="bg-white rounded-xl overflow-hidden custom-shadow">
+            <div class="px-6 py-8 sm:p-10">
+                <div class="flex items-center justify-center mb-8">
+                    <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="100" height="100" rx="20" fill="url(#paint0_linear)" />
+                        <path d="M20 50 H80" stroke="white" stroke-width="4" stroke-linecap="round" />
+                        <path d="M30 30 L30 70" stroke="white" stroke-width="4" stroke-linecap="round" />
+                        <path d="M50 30 L50 70" stroke="white" stroke-width="4" stroke-linecap="round" />
+                        <path d="M70 30 L70 70" stroke="white" stroke-width="4" stroke-linecap="round" />
+                        <circle cx="30" cy="40" r="5" fill="#FF00B4" />
+                        <circle cx="50" cy="60" r="5" fill="#FF00B4" />
+                        <circle cx="70" cy="50" r="5" fill="#FF00B4" />
+                        <defs>
+                            <linearGradient id="paint0_linear" x1="0" y1="0" x2="100" y2="100"
+                                gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#A100FF" />
+                                <stop offset="1" stop-color="#00FFFF" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <h1 class="text-5xl font-bold ml-4 text-center animated-title">PandasAI Query App</h1>
+                </div>
+
+                <div class="dropzone" id="drop-zone">
+                    <p>CSVファイル、またはExcelファイルをここにドラッグ&ドロップするか、クリックしてファイルを選択してください</p>
+                    <input type="file" id="file-input" style="display: none;" accept=".csv,.xlsx,.xls">
+                </div>
+
+                <input type="text" id="search-input" placeholder="検索..." class="mt-4">
+
+                <div id="csv-display" class="mt-8"></div>
+
+                <form id="query-form" class="space-y-6 mt-8">
+                    {% csrf_token %}
+                    <div class="bg-gray-100 rounded-lg p-6 shadow-sm">
+                        <label for="question" class="block text-sm font-medium text-gray-700 mb-2">質問を入力してください：</label>
+                        <textarea id="question" name="question" rows="4" class="input-field w-full" required></textarea>
+                    </div>
+                    <div class="output-type-container">
+                        <div class="bg-gray-100 rounded-lg p-6 shadow-sm">
+                            <label for="output_type" class="block text-sm font-medium text-gray-700 mb-2">出力形式：</label>
+                            <select id="output_type" name="output_type" class="input-field">
+                                <option value="plot" selected>graph</option>
+                                <option value="dataframe">dataframe</option>
+                                <option value="string">string</option>
+                                
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="btn-primary w-full">
+                            データを分析
+                        </button>
+                    </div>
+                </form>
+
+                <div id="result-container" class="mt-12" style="display: none;">
+                    <h2 class="text-3xl font-semibold mb-6 text-gray-800">分析結果</h2>
+                    <div class="space-y-6">
+                        <div id="result-content"></div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="flex items-center">
+                                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    説明
+                                </span>
+                                <svg class="w-6 h-6 icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                            <div class="card-content">
+                                <div class="card-inner">
+                                    <div id="explanation-content" class="preserve-whitespace"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="flex items-center">
+                                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                                    </svg>
+                                    実行されたコード
+                                </span>
+                                <svg class="w-6 h-6 icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                            <div class="card-content">
+                                <div class="card-inner">
+                                    <pre><code id="code-content" class="language-python"></code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="flex items-center">
+                                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 20 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                    コードの説明
+                                </span>
+                                <svg class="w-6 h-6 icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                            <div class="card-content">
+                                <div class="card-inner">
+                                    <div id="code-explanation-content"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                highlight: function (code, lang) {
+                    if (Prism.languages[lang]) {
+                        return Prism.highlight(code, Prism.languages[lang], lang);
+                    } else {
+                        return code;
+                    }
+                },
+                headerIds: false,
+                mangle: false
+            });
+
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const csvDisplay = document.getElementById('csv-display');
+            let selectedFile = null;
+            let csvData = [];
+
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length) handleFile(files[0]);
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const files = e.target.files;
+                if (files.length) handleFile(files[0]);
+            });
+
+            function handleFile(file) {
+                selectedFile = file;
+                const fileExtension = file.name.split('.').pop().toLowerCase();
+
+                if (fileExtension === 'csv') {
+                    Papa.parse(file, {
+                        complete: function (results) {
+                            csvData = results.data;
+                            displayCSV(csvData);
+                        },
+                        encoding: 'Shift-JIS',
+                        error: function (error) {
+                            console.log("Error parsing CSV:", error);
+                            alert("CSVファイルの解析中にエラーが発生しました。");
+                        }
+                    });
+                } else if (['xlsx', 'xls'].includes(fileExtension)) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        csvData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
+                        displayCSV(csvData);
+                    };
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    alert("未対応のファイル形式です。CSVまたはExcelファイルをアップロードしてください。");
+                }
+            }
+
+            function displayCSV(data) {
+                let table = '<table>';
+                let columnWidths = [];
+
+                // 各列の最大幅を計算（ヘッダーと内容の両方を考慮）
+                data.forEach((row, rowIndex) => {
+                    row.forEach((cell, cellIndex) => {
+                        const cellWidth = cell.toString().length;
+                        if (!columnWidths[cellIndex] || cellWidth > columnWidths[cellIndex]) {
+                            columnWidths[cellIndex] = cellWidth;
+                        }
+                    });
+                });
+
+                // 合計幅を計算
+                const totalWidth = columnWidths.reduce((sum, width) => sum + width, 0);
+
+                // テーブルのヘッダーを生成
+                table += '<tr>';
+                data[0].forEach((cell, index) => {
+                    // 各列の相対的な幅を計算（最小幅は5%、最大幅は30%）
+                    const relativeWidth = Math.max(5, Math.min(30, (columnWidths[index] / totalWidth) * 100));
+
+                    table += `<th class="sortable" data-column="${index}" style="width: ${relativeWidth}%;">
+        ${cell}<span class="sort-icon"></span>
+    </th>`;
+                });
+                table += '</tr>';
+
+                // テーブルの本体を生成
+                data.slice(1).forEach(row => {
+                    table += '<tr>';
+                    row.forEach((cell, index) => {
+                        let displayValue = cell;
+                        if (cell instanceof Date) {
+                            displayValue = cell.toISOString().split('T')[0]; // 'YYYY-MM-DD'形式に変換
+                        }
+                        table += `<td title="${displayValue}">${displayValue}</td>`;
+                    });
+                    table += '</tr>';
+                });
+
+                table += '</table>';
+                csvDisplay.innerHTML = table;
+
+                // ソート機能を追加
+                $('.sortable').on('click', function () {
+                    const column = $(this).data('column');
+                    sortTable(column);
+                });
+            }
+
+            let lastSortedColumn = null;
+            let isAscending = true;
+
+            function sortTable(column) {
+                const header = csvData[0];
+                const body = csvData.slice(1);
+
+                // 同じ列がクリックされた場合、ソート方向を反転
+                if (column === lastSortedColumn) {
+                    isAscending = !isAscending;
+                } else {
+                    // 新しい列がクリックされた場合、昇順でソート
+                    isAscending = true;
+                }
+
+                body.sort((a, b) => {
+                    let valueA = a[column];
+                    let valueB = b[column];
+
+                    // 数値の場合は数値としてソート
+                    if (!isNaN(valueA) && !isNaN(valueB)) {
+                        valueA = parseFloat(valueA);
+                        valueB = parseFloat(valueB);
+                    }
+
+                    if (valueA < valueB) return isAscending ? -1 : 1;
+                    if (valueA > valueB) return isAscending ? 1 : -1;
+                    return 0;
+                });
+
+                // ソートアイコンを更新
+                $('.sort-icon').removeClass('asc desc');
+                const sortIcon = $(`th[data-column="${column}"] .sort-icon`);
+                sortIcon.addClass(isAscending ? 'asc' : 'desc');
+
+                lastSortedColumn = column;
+                csvData = [header, ...body];
+                displayCSV(csvData);
+            }
+
+            // 検索機能
+            $('#search-input').on('input', function () {
+                const searchTerm = $(this).val().toLowerCase();
+                const filteredData = csvData.filter((row, index) => {
+                    if (index === 0) return true; // ヘッダー行は常に表示
+                    return row.some(cell => cell.toString().toLowerCase().includes(searchTerm));
+                });
+                displayCSV(filteredData);
+            });
+
+            $('#query-form').on('submit', function (e) {
+                e.preventDefault();
+                var question = $('#question').val().trim();
+
+                if (question === '') {
+                    alert('質問文を入力してください。');
+                    return;
+                }
+                $('#loading-overlay').show();
+
+                var formData = new FormData(this);
+
+                if (selectedFile) {
+                    formData.append('file', selectedFile);
+                    console.log("Appending file:", selectedFile.name);
+                } else {
+                    console.log("No file selected");
+                }
+
+                $.ajax({
+                    url: '{% url "index" %}',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        $('#result-content').html(response.result);
+                        // 説明テキストの処理を更新
+                        var formattedExplanation = response.explanation
+                            .replace(/\n\n/g, '\n<br><br>\n')
+                            .replace(/\n/g, '<br>');
+                        var htmlExplanation = marked.parse(formattedExplanation);
+                        $('#explanation-content').html(htmlExplanation);
+
+                        var decodedExecutedCode;
+                        try {
+                            decodedExecutedCode = decodeURIComponent(JSON.parse('"' + response.executed_code.replace(/\"/g, '\\"') + '"'));
+                        } catch (error) {
+                            console.warn("デコードに失敗しました。エンコードされていない文字列を使用します:", error);
+                            decodedExecutedCode = response.executed_code;
+                        }
+                        $('#code-content').text($('<div/>').html(decodedExecutedCode).text());
+                        var htmlCodeExplanation = marked.parse(response.code_explanation);
+                        $('#code-explanation-content').html(htmlCodeExplanation);
+                        Prism.highlightAll();
+                        $('#result-container').show();
+                    },
+                    error: function (xhr, status, error) {
+                        var errorMessage = xhr.responseJSON ? xhr.responseJSON.error : 'エラーが発生しました。もう一度お試しください。';
+                        alert(errorMessage);
+                        console.log("Error details:", xhr.responseText);
+                    },
+                    complete: function () {
+                        $('#loading-overlay').hide();
+                    }
+                });
+            });
+
+            $('.card').on('click', function () {
+                $(this).toggleClass('active');
+                var content = $(this).find('.card-content');
+                if (content.hasClass('show')) {
+                    content.removeClass('show');
+                    content.css('max-height', '0px');
+                } else {
+                    content.addClass('show');
+                    content.css('max-height', content[0].scrollHeight + 'px');
+                }
+            });
+        });
+
+        function openModelSettings() {
+            document.getElementById("modelListModal").style.display = "block";
+        }
+
+
+        // グローバル変数としてcurrentProviderを定義
+        let currentProvider = null;
+        let currentModelId = null;
+
+
+        function openProviderSetup(modelType) {
+            currentProvider = modelType;
+            document.getElementById("modelType").value = modelType;
+            document.getElementById("modelListModal").style.display = "none";
+            document.getElementById("modelSettingsModal").style.display = "block";
+            loadModelNames(modelType);
+            loadModelSettings(modelType);
+        }
+
+        function loadModelSettings(modelType) {
+            console.log("Loading model settings for:", modelType);
+            $.ajax({
+                url: '/get_model_settings/',
+                type: 'GET',
+                data: { model_type: modelType },
+                success: function (response) {
+                    console.log("Success response:", response);
+                    if (response.error) {
+                        console.log('Error loading settings:', response.error);
+                        clearModelSettings();
+                        currentModelId = null;  // この行を追加
+                    } else {
+                        document.getElementById("modelName").value = response.name || '';
+                        document.getElementById("apiKey").value = response.api_key || '';
+                        document.getElementById("apiVersion").value = response.api_version || '';
+                        document.getElementById("endpoint").value = response.endpoint || '';
+                        document.getElementById("isActive").checked = response.is_active;
+                        currentModelId = response.id;  // この行を追加
+                    }
+                    toggleAzureFields(modelType);
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error response:", xhr.responseText);
+                    console.error("Status:", status);
+                    console.error("Error:", error);
+                    clearModelSettings();
+                    currentModelId = null;  // この行を追加
+                    toggleAzureFields(modelType);
+                }
+            });
+        }
+
+
+        function clearModelSettings() {
+            document.getElementById("modelName").value = '';
+            document.getElementById("apiKey").value = '';
+            document.getElementById("apiVersion").value = '';
+            document.getElementById("endpoint").value = '';
+            document.getElementById("isActive").checked = false;
+            currentModelId = null;  // この行を追加
+        }
+        function toggleAzureFields(modelType) {
+            const azureFields = document.querySelectorAll('.azure-field');
+            if (modelType === "AzureOpenAI") {
+                azureFields.forEach(field => field.style.display = "block");
+            } else {
+                azureFields.forEach(field => field.style.display = "none");
+            }
+        }
+
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const eyeIcon = input.nextElementSibling.querySelector('.eye-icon');
+
+            if (input.type === "password") {
+                input.type = "text";
+                eyeIcon.innerHTML = `
+                <line x1="3" y1="3" x2="21" y2="21"></line>
+                <path d="M10.584 10.587a2 2 0 0 0 2.828 2.83"></path>
+                <path d="M21 12c-2.08 1.822-4.342 3-7 3a8.93 8.93 0 0 1-5.772-2.084"></path>
+                <path d="M9.148 9.145a8.98 8.98 0 0 0-4.876 2.855"></path>
+                <path d="M3 12s4-8 11-8c2.186 0 4.17.712 5.783 1.89"></path>
+            `;
+            } else {
+                input.type = "password";
+                eyeIcon.innerHTML = `
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+            `;
+            }
+        }
+
+        document.getElementById("modelSettingsForm").onsubmit = function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            formData.set('provider', currentProvider);
+            formData.set('is_active', document.getElementById("isActive").checked);
+            if (currentModelId) {
+                formData.set('model_id', currentModelId);
+            }
+
+            for (let [key, value] of formData.entries()) {
+                console.log(key + ': ' + value);
+            }
+
+            $.ajax({
+                url: '/save_model_settings/',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (response) {
+                    console.log('Success:', response);
+                    if (response.success) {
+                        alert('モデルが保存されました');
+                        document.getElementById("modelSettingsModal").style.display = "none";
+                        currentModelId = response.id;  // 返されたIDで currentModelId を更新
+                    } else {
+                        alert('モデルの保存に失敗しました: ' + response.message);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', xhr.responseText);
+                    let errorMessage = 'モデルの保存に失敗しました';
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage += ': ' + errorResponse.message;
+                    } catch (e) {
+                        errorMessage += ': ' + error;
+                    }
+                    alert(errorMessage);
+                }
+            });
+        };
+        // モーダルを閉じる処理
+        document.querySelectorAll(".modal .close").forEach(closeBtn => {
+            closeBtn.onclick = function () {
+                this.closest('.modal').style.display = "none";
+            }
+        });
+
+        window.onclick = function (event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = "none";
+            }
+        }
+
+        // 初期化時にモデル設定をロード
+        document.addEventListener('DOMContentLoaded', function () {
+            const modelListModal = document.getElementById("modelListModal");
+            const modelSettingsModal = document.getElementById("modelSettingsModal");
+
+            modelListModal.style.display = "none";
+            modelSettingsModal.style.display = "none";
+        });
+
+        function loadModelNames(modelType) {
+            $.ajax({
+                url: '/get_model_names/',  // このURLが urls.py の設定と一致していることを確認
+                type: 'GET',
+                data: { model_type: modelType },
+                success: function (response) {
+                    const selectElement = document.getElementById("modelName");
+                    selectElement.innerHTML = '';
+                    response.model_names.forEach(name => {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = name;
+                        selectElement.appendChild(option);
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error fetching model names:", error);
+                    alert('モデル名の取得に失敗しました');
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
