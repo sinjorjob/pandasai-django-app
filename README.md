@@ -31,7 +31,7 @@ CSV,ExcelファイルをWEB画面にアップロード後に自然言語でデ�
 
 3. プロジェクトディレクトリに移動
    ```
-   cd <project-folder>
+   cd pandasai-django-app\source
    ```
 
 4. データベースのセットアップ
