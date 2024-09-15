@@ -5,7 +5,11 @@ pandas-ai を組み込んだ Django アプリケーションです。
 
 [pandas-ai GitHub リポジトリ](https://github.com/Sinaptik-AI/pandas-ai?tab=readme-ov-file)
 
+CSV,ExcelファイルをWEB画面にアップロード後に自然言語でデータ分析ができるアプリです。
+アプトプットは、分析結果の文章、表形式、図の３種類を指定できます。
 
+## 注意点
+指示出しの仕方によっては、ハルシネーションを起こすのでアウトプットが正しいかは別途確認しましょう。
 
 ## 動作確認環境
 
