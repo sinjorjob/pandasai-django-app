@@ -43,7 +43,9 @@ def index(request):
                     response = pandas_ai.chat(question, output_type=output_type)
 
                     if output_type == 'string':
-                        result_html = f'<div class="result-text text-sm text-gray-700">{response}</div>'
+                        formatted_response = response.replace('\n', '<br>')
+                        formatted_response = '<p>' + formatted_response.replace('<br><br>', '</p><p>') + '</p>'
+                        result_html = f'<div class="result-text text-sm text-gray-700">{formatted_response}</div>'
                         explanation = "データなし"
                         executed_code = "データなし"
                         code_explanation = "データなし"
