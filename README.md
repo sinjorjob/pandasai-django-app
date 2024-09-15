@@ -5,7 +5,7 @@ pandas-ai を組み込んだ Django アプリケーションです。
 
 [pandas-ai GitHub リポジトリ](https://github.com/Sinaptik-AI/pandas-ai?tab=readme-ov-file)
 
-![pandas-ai-django-app logo](https://example.com/pandasai-django-app-logo.png)
+
 
 ## 動作確認環境
 
@@ -77,13 +77,16 @@ Successfully initialized AI model data
 
 http://127.0.0.1:8000/ にアクセスすると以下のような画面が表示されます。
 
-![メイン画面](https://example.com/main-screen.png)
+![メイン画面](https://github.com/sinjorjob/pandasai-django-app/blob/main/images/TOP-SCREEN.png)
 
 ### 1. モデルの設定
 
 画面右上の「モデル設定」を押すと以下の画面が表示されるので、利用するプロバイダの「セットアップ」ボタンをクリックします。
 
-![モデル設定画面](https://example.com/model-setup-screen.png)
+![モデル設定画面](https://github.com/sinjorjob/pandasai-django-app/blob/main/images/model-setting.png)
+
+![モデル設定画面](https://github.com/sinjorjob/pandasai-django-app/blob/main/images/model-setting2.png)
+
 
 モデル名、API キーを入力してアクティブ UI を有効にした状態で保存します。
 AzureOpenAI の場合は、API Version と Endpoint も登録します。
@@ -96,10 +99,12 @@ AzureOpenAI の場合は、API Version と Endpoint も登録します。
 2. アップロードすると以下の様に自動的にファイルの内容を読み取りテーブル形式で表示します。
    ※綺麗なテーブル形式のデータ以外は正しく読み取れないので注意。
 
-   ![テーブル表示](https://example.com/table-display.png)
+   ![テーブル表示](https://github.com/sinjorjob/pandasai-django-app/blob/main/images/fileupload1.png)
 
    - 「検索」ボックスに文字列を入れると文字列検索ができます。
    - 各列をクリックすると、「昇順、降順」にソートすることができます。
+
+   ![テーブル表示](https://github.com/sinjorjob/pandasai-django-app/blob/main/images/fileupload2.png)
 
 3. 「質問を入力してください：」の欄にアップロードしたファイルに対する指示文を入力します。
 
@@ -110,7 +115,11 @@ AzureOpenAI の場合は、API Version と Endpoint も登録します。
 
 ### サンプルデータを使用した例
 
-サンプルデータの「プロジェクト収支データ.csv」をアップロードした状態でそれぞれ以下のような指示出しを行います。
+サンプルデータの「プロジェクト収支データ.csv」をアップロードした状態で出力形式をgraph, dataframe, stringsを指定して実行した場合の実行例です。
+
+【注意】
+指示出し内容が曖昧だったり、指定した出力形式と指示内容に矛盾がある場合は正しいアウトプットが出力されない、もしくは誤った結果が表示されるケースがあるのため、
+出力内容の正しさは別途確認しましょう。
 
 #### graph の例
 
@@ -125,21 +134,29 @@ AzureOpenAI の場合は、API Version と Endpoint も登録します。
 横幅をできるだけ長くして見やすいレイアウトにしてください。
 ```
 
-![グラフ結果](https://example.com/graph-result.png)
+![グラフ結果](https://github.com/sinjorjob/pandasai-django-app/blob/main/images/graph-1.png)
+
+以下の様にPandasaiが標準で返す説明情報と、実行された分析コード、また分析コードを生成AIに解説してもらった結果（独自に追加した機能）の情報を確認することができます。
+
+![グラフ結果](https://github.com/sinjorjob/pandasai-django-app/blob/main/images/graph-1-exlpain.png)
+
+![グラフ結果](https://github.com/sinjorjob/pandasai-django-app/blob/main/images/graph-1-exlpain2.png)
+
+
 
 #### dataframe の例
 
 ```
-プロジェクト毎の総売上と総利益を計算し、利益率順に並べ替えて表示してください。
+プロジェクト毎の全データの総収益、総コスト、総利益、利益率をまとめてください。
 ```
 
-![データフレーム結果](https://example.com/dataframe-result.png)
+![データフレーム結果](https://github.com/sinjorjob/pandasai-django-app/blob/main/images/dataframe.png)
 
 #### string の例
 
 ```
-最も利益率の高いプロジェクトと最も低いプロジェクトを比較し、その理由を分析してください。
+全期間における利益率が一番低いプロジェクト名を抽出し、与えられたデータから推測できる課題点と具体的な改善策を回答してください。
 ```
 
-![文字列結果](https://example.com/string-result.png)
+![文字列結果](https://github.com/sinjorjob/pandasai-django-app/blob/main/images/string-1.png)
 
