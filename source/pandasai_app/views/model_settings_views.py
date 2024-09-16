@@ -7,7 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
+@csrf_exempt
 @require_http_methods(["POST"])
 def save_model_settings(request):
     provider_name = request.POST.get('provider')
