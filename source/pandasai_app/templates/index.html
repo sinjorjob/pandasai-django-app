@@ -615,13 +615,14 @@
         .model-settings-button svg {
             margin-right: 8px;
         }
+
         #result-content table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 1em;
             font-size: 0.9em;
         }
-        
+
         #result-content th {
             background-color: #4a5568;
             color: white;
@@ -630,28 +631,106 @@
             padding: 10px;
             border: 1px solid #e2e8f0;
         }
-        
+
         #result-content td {
             padding: 8px;
             border: 1px solid #e2e8f0;
         }
-        
+
         #result-content tr:nth-child(even) {
             background-color: #f8fafc;
         }
-        
+
         #result-content tr:hover {
             background-color: #edf2f7;
         }
+
         .output-type-container {
             width: auto;
             max-width: 200px;
             display: inline-block;
         }
+
         #output_type {
             width: 100%;
             text-align-last: left;
             padding-right: 20px;
+        }
+
+        #question {
+            min-height: 300px;
+            /* または必要な高さを指定 */
+        }
+        /* Markdownプレビュー用のスタイル */
+        /* Markdownプレビュー用の改善されたスタイル */
+        .markdown-preview {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .markdown-preview h1 {
+            font-size: 2em;
+            border-bottom: 2px solid #eaecef;
+            padding-bottom: 0.3em;
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        .markdown-preview h2 {
+            font-size: 1.5em;
+            border-bottom: 1px solid #eaecef;
+            padding-bottom: 0.3em;
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        .markdown-preview h3 {
+            font-size: 1.25em;
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        .markdown-preview ul, .markdown-preview ol {
+            padding-left: 2em;
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+        .markdown-preview li {
+            margin-bottom: 0.25em;
+        }
+        .markdown-preview code {
+            background-color: rgba(27,31,35,0.05);
+            border-radius: 3px;
+            font-size: 85%;
+            margin: 0;
+            padding: 0.2em 0.4em;
+        }
+        .markdown-preview pre {
+            background-color: #f6f8fa;
+            border-radius: 3px;
+            font-size: 85%;
+            line-height: 1.45;
+            overflow: auto;
+            padding: 16px;
+        }
+        .markdown-preview pre code {
+            background-color: transparent;
+            border: 0;
+            display: inline;
+            line-height: inherit;
+            margin: 0;
+            max-width: auto;
+            overflow: visible;
+            padding: 0;
+            word-wrap: normal;
         }
     </style>
 </head>
@@ -731,10 +810,12 @@
                 {% csrf_token %}
                 <input type="hidden" id="modelType" name="model_type">
                 <div class="form-group">
-                    <label for="modelName">モデル名</label>
-                    <select id="modelName" name="name" class="input-field">
-                        <!-- モデル名のオプションがここに動的に追加されます -->
+                    <label for="modelName" id="modelNameLabel">モデル名</label>
+                    <select id="modelName" name="model_name" class="input-field"></select>
+                    <!-- モデル名のオプションがここに動的に追加されます -->
                     </select>
+                    <input type="text" id="deploymentName" name="deployment_name" class="input-field"
+                        style="display: none;" placeholder="デプロイメント名を入力">
                 </div>
                 <div class="form-group">
                     <label for="apiKey">API Key</label>
@@ -750,11 +831,11 @@
                         </button>
                     </div>
                 </div>
-                <div class="form-group azure-field">
+                <div class="form-group azure-field" style="display: none;">
                     <label for="apiVersion">API Version</label>
                     <input type="text" id="apiVersion" name="api_version" placeholder="API Version">
                 </div>
-                <div class="form-group azure-field">
+                <div class="form-group azure-field" style="display: none;">
                     <label for="endpoint">Endpoint</label>
                     <input type="text" id="endpoint" name="endpoint" placeholder="Endpoint">
                 </div>
@@ -818,7 +899,7 @@
                                 <option value="plot" selected>graph</option>
                                 <option value="dataframe">dataframe</option>
                                 <option value="string">string</option>
-                                
+
                             </select>
                         </div>
                     </div>
@@ -1119,7 +1200,10 @@
                     processData: false,
                     contentType: false,
                     success: function (response) {
-                        $('#result-content').html(response.result);
+
+                        var htmlResult = marked.parse(response.result);
+                        $('#result-content').html('<div class="markdown-preview">' + htmlResult + '</div>');
+                        // $('#result-content').html(response.result);
                         // 説明テキストの処理を更新
                         var formattedExplanation = response.explanation
                             .replace(/\n\n/g, '\n<br><br>\n')
@@ -1173,14 +1257,36 @@
         let currentProvider = null;
         let currentModelId = null;
 
+        function toggleProviderFields(providerName) {
+            const modelNameSelect = document.getElementById('modelName');
+            const deploymentNameInput = document.getElementById('deploymentName');
+            const modelNameLabel = document.getElementById('modelNameLabel');
+            const azureFields = document.querySelectorAll('.azure-field');
+
+            if (providerName === 'OpenAI') {
+                modelNameSelect.style.display = 'block';
+                deploymentNameInput.style.display = 'none';
+                modelNameLabel.textContent = 'モデル名';
+                azureFields.forEach(field => field.style.display = 'none');
+            } else if (providerName === 'AzureOpenAI') {
+                modelNameSelect.style.display = 'none';
+                deploymentNameInput.style.display = 'block';
+                modelNameLabel.textContent = 'デプロイメント名';
+                azureFields.forEach(field => field.style.display = 'block');
+            }
+        }
 
         function openProviderSetup(modelType) {
             currentProvider = modelType;
+
             document.getElementById("modelType").value = modelType;
             document.getElementById("modelListModal").style.display = "none";
             document.getElementById("modelSettingsModal").style.display = "block";
-            loadModelNames(modelType);
+            if (modelType === 'OpenAI') {
+                loadModelNames(modelType);
+            }
             loadModelSettings(modelType);
+            toggleProviderFields(modelType);
         }
 
         function loadModelSettings(modelType) {
@@ -1194,24 +1300,28 @@
                     if (response.error) {
                         console.log('Error loading settings:', response.error);
                         clearModelSettings();
-                        currentModelId = null;  // この行を追加
+                        currentModelId = null;
                     } else {
-                        document.getElementById("modelName").value = response.name || '';
+                        if (modelType === 'AzureOpenAI') {
+                            document.getElementById("deploymentName").value = response.name || '';
+                        } else {
+                            document.getElementById("modelName").value = response.name || '';
+                        }
                         document.getElementById("apiKey").value = response.api_key || '';
                         document.getElementById("apiVersion").value = response.api_version || '';
                         document.getElementById("endpoint").value = response.endpoint || '';
                         document.getElementById("isActive").checked = response.is_active;
-                        currentModelId = response.id;  // この行を追加
+                        currentModelId = response.id;
                     }
-                    toggleAzureFields(modelType);
+                    toggleProviderFields(modelType);
                 },
                 error: function (xhr, status, error) {
                     console.error("Error response:", xhr.responseText);
                     console.error("Status:", status);
                     console.error("Error:", error);
                     clearModelSettings();
-                    currentModelId = null;  // この行を追加
-                    toggleAzureFields(modelType);
+                    currentModelId = null;
+                    toggleProviderFields(modelType);
                 }
             });
         }
@@ -1229,11 +1339,12 @@
             const azureFields = document.querySelectorAll('.azure-field');
             if (modelType === "AzureOpenAI") {
                 azureFields.forEach(field => field.style.display = "block");
+                document.querySelector('label[for="modelName"]').textContent = "デプロイメント名";
             } else {
                 azureFields.forEach(field => field.style.display = "none");
+                document.querySelector('label[for="modelName"]').textContent = "モデル名";
             }
         }
-
         function togglePasswordVisibility(inputId) {
             const input = document.getElementById(inputId);
             const eyeIcon = input.nextElementSibling.querySelector('.eye-icon');
@@ -1260,12 +1371,28 @@
             e.preventDefault();
             const formData = new FormData(this);
 
+            // デバッグ: フォームデータの内容をコンソールに出力
+            for (let [key, value] of formData.entries()) {
+                console.log(key + ': ' + value);
+            }
+
+            // プロバイダーに応じて適切なname属性を設定
+            if (currentProvider === 'OpenAI') {
+                formData.set('name', formData.get('model_name'));
+                formData.delete('deployment_name');
+            } else if (currentProvider === 'AzureOpenAI') {
+                formData.set('name', formData.get('deployment_name'));
+                formData.delete('model_name');
+            }
+
             formData.set('provider', currentProvider);
             formData.set('is_active', document.getElementById("isActive").checked);
             if (currentModelId) {
                 formData.set('model_id', currentModelId);
             }
 
+            // デバッグ: 修正後のフォームデータの内容をコンソールに出力
+            console.log("Modified form data:");
             for (let [key, value] of formData.entries()) {
                 console.log(key + ': ' + value);
             }
@@ -1277,7 +1404,7 @@
                 processData: false,
                 contentType: false,
                 success: function (response) {
-                    console.log('Success:', response);
+                    console.log("Success response:", response);  // デバッグ: 成功レスポンスをコンソールに出力
                     if (response.success) {
                         alert('モデルが保存されました');
                         document.getElementById("modelSettingsModal").style.display = "none";
@@ -1322,25 +1449,40 @@
         });
 
         function loadModelNames(modelType) {
-            $.ajax({
-                url: '/get_model_names/',  // このURLが urls.py の設定と一致していることを確認
-                type: 'GET',
-                data: { model_type: modelType },
-                success: function (response) {
-                    const selectElement = document.getElementById("modelName");
-                    selectElement.innerHTML = '';
-                    response.model_names.forEach(name => {
-                        const option = document.createElement('option');
-                        option.value = name;
-                        option.textContent = name;
-                        selectElement.appendChild(option);
-                    });
-                },
-                error: function (xhr, status, error) {
-                    console.error("Error fetching model names:", error);
-                    alert('モデル名の取得に失敗しました');
-                }
-            });
+            console.log("Loading model names for:", modelType);
+            const selectElement = document.getElementById("modelName");
+
+            if (modelType === "OpenAI") {
+                $.ajax({
+                    url: '/get_model_names/',
+                    type: 'GET',
+                    success: function (response) {
+                        console.log("Model names response:", response);
+                        selectElement.innerHTML = '';
+                        if (response.model_names && response.model_names.length > 0) {
+                            response.model_names.forEach(name => {
+                                const option = document.createElement('option');
+                                option.value = name;
+                                option.textContent = name;
+                                selectElement.appendChild(option);
+                            });
+                        } else {
+                            console.warn("No model names received for OpenAI");
+                            const option = document.createElement('option');
+                            option.value = "";
+                            option.textContent = "モデル名が利用できません";
+                            selectElement.appendChild(option);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Error fetching model names:", error);
+                        selectElement.innerHTML = '<option value="">エラー: モデル名を取得できません</option>';
+                    }
+                });
+            } else if (modelType === "AzureOpenAI") {
+                // AzureOpenAIの場合は何もしない（自由入力のため）
+                console.log("AzureOpenAI selected, no model names to load");
+            }
         }
     </script>
 </body>

@@ -1,6 +1,8 @@
 from django.conf import settings
-from pandasai.llm import OpenAI, AzureOpenAI
+from pandasai.llm import OpenAI
 from ..models import AIModelProvider, AIModel
+from pandasai.llm.azure_openai import AzureOpenAI
+
 
 def initialize_llm():
     active_provider = AIModelProvider.objects.filter(is_active=True).first()
@@ -20,7 +22,7 @@ def initialize_llm():
             api_token=active_model.api_key,
             azure_endpoint=active_model.endpoint,
             api_version=active_model.api_version,
-            deployment_name=active_model.model_name.name,
+            deployment_name=active_model.deployment_name,
             temperature=0
         )
     else:

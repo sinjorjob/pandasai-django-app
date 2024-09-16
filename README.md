@@ -161,7 +161,7 @@ AzureOpenAI の場合は、API Version と Endpoint も登録します。
 #### string の例
 
 ```
-全期間における利益率が一番低いプロジェクト名を抽出し、与えられたデータから推測できる課題点と具体的な改善策を回答してください。
+全期間における平均利益率が一番低いプロジェクト名を抽出した後に、平均利益率がなぜ低いのかを、与えられたデータから推測できる課題点と具体的な改善策をできるだけ詳細に洗い出して回答してください。
 ```
 
 ![文字列結果](https://github.com/sinjorjob/pandasai-django-app/blob/main/images/string-1.png)

@@ -40,12 +40,19 @@ def index(request):
                 })
 
                 try:
+                    # 新しい処理: output_type が 'string' の場合、質問に指示文を追加
+                    if output_type == 'string':
+                        question += "\n\n#出力フォーマット\nMarkdown形式"
+
+                    #print("question;",question)
                     response = pandas_ai.chat(question, output_type=output_type)
 
                     if output_type == 'string':
-                        formatted_response = response.replace('\n', '<br>')
-                        formatted_response = '<p>' + formatted_response.replace('<br><br>', '</p><p>') + '</p>'
-                        result_html = f'<div class="result-text text-sm text-gray-700">{formatted_response}</div>'
+                        print(response)
+                        #formatted_response = response.replace('\n', '<br>')
+                        #formatted_response = '<p>' + formatted_response.replace('<br><br>', '</p><p>') + '</p>'
+                        #result_html = f'<div class="result-text text-sm text-gray-700">{formatted_response}</div>'
+                        result_html = response
                         explanation = "データなし"
                         executed_code = "データなし"
                         code_explanation = "データなし"
