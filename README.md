@@ -18,6 +18,13 @@ CSV,ExcelファイルをWEB画面にアップロード後に自然言語でデ�
 
 ## 起動手順
 
+0. リポジトリのクローン or Download
+
+   ```
+   git clone https://github.com/sinjorjob/pandasai-django-app.git
+   ```
+
+
 1. 仮想環境の作成と有効化
    ```
    python -m venv <仮想環境名>
