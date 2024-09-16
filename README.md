@@ -61,7 +61,8 @@ CSV,ExcelファイルをWEB画面にアップロード後に自然言語でデ�
 
 ## 初期データの登録（LLMモデル）
 
-以下のコマンドを実行して LLM モデルの初期データを登録します：
+以下のコマンドを実行して LLM モデルの初期データを登録します：  
+※OpenAIは４つのモデル（'gpt-4o-mini', 'gpt-4o','o1-preview','o1-mini'）を自動登録。  
 
 ```
 python manage.py init_model_data
